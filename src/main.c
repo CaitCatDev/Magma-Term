@@ -320,9 +320,10 @@ int main(int argc, char **argv) {
 	}
 
 	ctx.backend = magma_backend_init_auto();
-	if(ctx.backend == 0) return -1;
+	if(ctx.backend == NULL) return -1;
 
 	ctx.renderer = magma_vk_renderer_init(ctx.backend);
+	if(ctx.renderer == NULL) return -1;
 
 	ctx.context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
 

@@ -7,8 +7,15 @@
 #include <vulkan/vulkan_core.h>
 
 
+
 #include <magma/private/renderer/vk.h>
 #include <magma/logger/log.h>
+
+
+/* Todo think of some way to handle this as at the 
+ * moment the shaders need to be at ./shaders/ from
+ * the local dir and this is not ideal
+ */
 
 static void *magmaVkReadShaderFile(const char *path, size_t *size) {
 	uint8_t *shader_code;

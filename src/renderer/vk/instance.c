@@ -186,7 +186,7 @@ VkResult magma_vk_create_instance(magma_backend_t *backend, VkAllocationCallback
 	app_info.engineVersion = 1;
 	app_info.pApplicationName = "Magma";
 	app_info.applicationVersion = 1;
-	app_info.apiVersion = VK_MAKE_VERSION(1, 0, 0);
+	app_info.apiVersion = VK_MAKE_VERSION(1, 3, 0);
 	app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
 
 	create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;

@@ -1,6 +1,5 @@
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_core.h>
-
 #include <magma/renderer/vk.h>
 #include <magma/backend/backend.h>
 #include <magma/logger/log.h>
@@ -18,11 +17,10 @@ VkAllocationCallbacks *magma_vk_allocator(void);
 void magma_vk_allocator_print_totals(void);
 #endif
 
-VkResult magmaVkCreateImageView(magma_vk_renderer_t *vk);
 VkResult magmaVkCreateRenderPass(magma_vk_renderer_t *vk);
 VkResult magmaVkCreatePipeline(magma_vk_renderer_t *vk);
-VkResult magmaVkCreateDstImageView(magma_vk_renderer_t *vk);
 VkResult magmaVkCreateCommandPool(magma_vk_renderer_t *vk);
+
 
 void insertImageMemoryBarrier(
 	VkCommandBuffer cmdbuffer,
@@ -212,6 +210,7 @@ void magma_vk_create_framebuffer(magma_vk_renderer_t *vk) {
 }
 
 void magma_vk_handle_resize(magma_vk_renderer_t *vk, uint32_t width, uint32_t height) {
+	VkResult res;
 	vk->height = height;
 	vk->width = width;
 
@@ -229,11 +228,40 @@ void magma_vk_handle_resize(magma_vk_renderer_t *vk, uint32_t width, uint32_t he
 
 	vkDestroyImage(vk->device, vk->vk_image, vk->alloc);
 
+	/*Src Memory:*/
+	res = magma_vk_create_2dimage(vk->device, vk->height, vk->width, 
+				VK_FORMAT_B8G8R8A8_SRGB, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
+				VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+				0, VK_IMAGE_TILING_OPTIMAL, 1, 1, NULL, vk->alloc, &vk->vk_image);
+	if(res) {
+		
+	}
 
-	magmaVkCreateImageView(vk);
-	magmaVkCreateDstImageView(vk);
+	res = magma_vk_allocate_image(vk->device, vk->phy_dev, vk->vk_image, 
+			0, NULL, vk->alloc, &vk->src_mem);
+	
+	vkBindImageMemory(vk->device, vk->vk_image, vk->src_mem, 0);
+
+	magma_vk_create_image_view(vk->device, VK_FORMAT_B8G8R8A8_SRGB, vk->vk_image,
+			VK_IMAGE_VIEW_TYPE_2D, 0, 0, 0, 1, 1, VK_IMAGE_ASPECT_COLOR_BIT, 
+			(VkComponentMapping){ 0 }, vk->alloc, &vk->vk_image_view);
+
+	/*Dst Image*/
+	res = magma_vk_create_2dimage(vk->device, vk->height, vk->width, 
+				VK_FORMAT_B8G8R8A8_UNORM, VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+				0, VK_IMAGE_TILING_LINEAR, 1, 1, NULL, vk->alloc, &vk->dst_image);
+	if(res) {
+		
+	}
+
+	res = magma_vk_allocate_image(vk->device, vk->phy_dev, vk->vk_image, 
+			VK_MEMORY_PROPERTY_HOST_CACHED_BIT | 
+			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, 
+			NULL, vk->alloc, &vk->dst_mem);
+	
+	vkBindImageMemory(vk->device, vk->dst_image, vk->dst_mem, 0);
+
 	magma_vk_create_framebuffer(vk);
-
 }
 
 magma_vk_renderer_t *magma_vk_renderer_init(magma_backend_t *backend) {
@@ -278,23 +306,53 @@ magma_vk_renderer_t *magma_vk_renderer_init(magma_backend_t *backend) {
 		goto error_vk_create_device;
 	}
 
-	/*TODO: CHECK*/
+	/*Src Memory:*/
+	res = magma_vk_create_2dimage(vk->device, vk->height, vk->width, 
+				VK_FORMAT_B8G8R8A8_SRGB, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
+				VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+				0, VK_IMAGE_TILING_OPTIMAL, 1, 1, NULL, vk->alloc, &vk->vk_image);
+	if(res) {
+		
+	}
+
+	res = magma_vk_allocate_image(vk->device, vk->phy_dev, vk->vk_image, 
+			0, NULL, vk->alloc, &vk->src_mem);
+	
+	vkBindImageMemory(vk->device, vk->vk_image, vk->src_mem, 0);
+
+	magma_vk_create_image_view(vk->device, VK_FORMAT_B8G8R8A8_SRGB, vk->vk_image,
+			VK_IMAGE_VIEW_TYPE_2D, 0, 0, 0, 1, 1, VK_IMAGE_ASPECT_COLOR_BIT, 
+			(VkComponentMapping){ 0 }, vk->alloc, &vk->vk_image_view);
+
+	/*Dst Image*/
+	res = magma_vk_create_2dimage(vk->device, vk->height, vk->width, 
+				VK_FORMAT_B8G8R8A8_UNORM, VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+				0, VK_IMAGE_TILING_LINEAR, 1, 1, NULL, vk->alloc, &vk->dst_image);
+	if(res) {
+		
+	}
+
+	res = magma_vk_allocate_image(vk->device, vk->phy_dev, vk->vk_image, 
+			VK_MEMORY_PROPERTY_HOST_CACHED_BIT | 
+			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, 
+			NULL, vk->alloc, &vk->dst_mem);
+	
+	vkBindImageMemory(vk->device, vk->dst_image, vk->dst_mem, 0);
+
+
 	magmaVkCreateRenderPass(vk);
 	magmaVkCreatePipeline(vk);
-	magmaVkCreateImageView(vk);
-	magmaVkCreateDstImageView(vk);
 	magmaVkCreateCommandPool(vk);
 	magma_vk_create_framebuffer(vk);
 
 	return vk;
 error_vk_create_device:
-
 error_vk_get_phsyical_dev:
 #ifdef MAGMA_VK_DEBUG
 	vkDestroyDebugUtilsMessengerEXT(vk->instance, vk->debug_messenger, NULL);
 error_vk_get_debug_msg:
 #endif
-	vkDestroyInstance(vk->instance, NULL);
+	vkDestroyInstance(vk->instance, vk->alloc);
 error_vk_create_instance:
 	free(vk);
 error_alloc_vk_struct:
