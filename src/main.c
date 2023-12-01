@@ -113,13 +113,10 @@ void draw_cb(magma_backend_t *backend, uint32_t height, uint32_t width, void *da
 				x = ((x) | (8 - 1)) + 1;
 				continue;
 			}
-			echo_char(ctx, ctx->vt->lines[y][x], x, y, vk);
 			x++;
 		}
 	}
 
-	glyph_t cursor = { .unicode = '_', .fg = 0xf8f8f2, .bg = 0, .attributes = 0};
-	echo_char(ctx, cursor, ctx->vt->buf_x, ctx->vt->buf_y, vk);
 
 	magma_backend_put_buffer(backend, vk);
 }
@@ -216,7 +213,7 @@ void key_cb(magma_backend_t *backend, int key, int action, void *data){
 	UNUSED(backend);
 }
 
-
+int magma_vk_font_bitmap_init(magma_vk_renderer_t *vk, FT_Face face);
 void magma_vk_handle_resize(magma_vk_renderer_t *vk, uint32_t width, uint32_t height);
 
 void resize_cb(magma_backend_t *backend, uint32_t height, uint32_t width, void *data) {
@@ -263,6 +260,7 @@ void resize_cb(magma_backend_t *backend, uint32_t height, uint32_t width, void *
 	}
 
 	magma_vk_handle_resize(ctx->renderer, width, height);
+
 }
 
 void on_close(magma_backend_t *backend, void *data) {
@@ -299,7 +297,7 @@ int main(int argc, char **argv) {
 
 	FcInit();
 	ctx.font = magma_font_init("monospace");
-	FT_Set_Pixel_Sizes(ctx.font->face, 18, 18);
+	FT_Set_Pixel_Sizes(ctx.font->face,24, 24);
 	ctx.font->height = ctx.font->face->size->metrics.height >> 6;
 	
 	/* Get the size of the M character to use as the advance width 
@@ -324,6 +322,8 @@ int main(int argc, char **argv) {
 
 	ctx.renderer = magma_vk_renderer_init(ctx.backend);
 	if(ctx.renderer == NULL) return -1;
+
+	magma_vk_font_bitmap_init(ctx.renderer, ctx.font->face);
 
 	ctx.context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
 

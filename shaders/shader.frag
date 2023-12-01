@@ -1,9 +1,12 @@
-#version 450
+#version 450 core
 
-layout(location = 0) in vec3 fragColor;
+layout (location = 0) in vec2 inUV;
 
-layout(location = 0) out vec4 outColor;
+layout (binding = 0) uniform sampler2D samplerFont;
 
-void main() {
-    outColor = vec4(fragColor, 1.0);
+layout (location = 0) out vec4 outFragColor;
+
+void main(void)
+{
+	outFragColor = vec4(texture(samplerFont, inUV).r);
 }

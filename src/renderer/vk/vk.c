@@ -19,8 +19,6 @@ void magma_vk_allocator_print_totals(void);
 
 VkResult magmaVkCreateRenderPass(magma_vk_renderer_t *vk);
 VkResult magmaVkCreatePipeline(magma_vk_renderer_t *vk);
-VkResult magmaVkCreateCommandPool(magma_vk_renderer_t *vk);
-
 
 void insertImageMemoryBarrier(
 	VkCommandBuffer cmdbuffer,
@@ -54,6 +52,8 @@ void insertImageMemoryBarrier(
 
 magma_buf_t *magma_vk_draw(magma_vk_renderer_t *vk) {
 	static magma_buf_t buf;
+
+
 	VkCommandBufferBeginInfo beginInfo = { 0 };
 	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	vkBeginCommandBuffer(vk->draw_buffer, &beginInfo);
@@ -67,13 +67,15 @@ magma_buf_t *magma_vk_draw(magma_vk_renderer_t *vk) {
 	renderPassInfo.renderArea.extent.height = vk->height;
 	renderPassInfo.renderArea.extent.width = vk->width;
 	
-	VkClearValue clearColor = {{{.2f, 0.3f, 0.3f, .8f}}};
+	VkClearValue clearColor = {{{1.0f, 0.f, 0.f, .8f}}};
 	renderPassInfo.clearValueCount = 1;
 	renderPassInfo.pClearValues = &clearColor;
 
 	vkCmdBeginRenderPass(vk->draw_buffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 		vkCmdBindPipeline(vk->draw_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk->graphics_pipeline);
+		vkCmdBindDescriptorSets(vk->draw_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk->pipeline_layout, 0, 1, &vk->desc_set, 0, NULL);
+
 
 		VkViewport viewport = {0};
 		viewport.x = 0.0f;
@@ -90,10 +92,12 @@ magma_buf_t *magma_vk_draw(magma_vk_renderer_t *vk) {
 		scissor.extent.height = vk->height;
 		scissor.extent.width = vk->width;
 		vkCmdSetScissor(vk->draw_buffer, 0, 1, &scissor);
+		
 
-
-		vkCmdDraw(vk->draw_buffer, 3, 1, 0, 0);
-
+		VkDeviceSize offsets = 0;
+		vkCmdBindVertexBuffers(vk->draw_buffer, 0, 1, &vk->vertex_buffer, &offsets);
+		vkCmdBindVertexBuffers(vk->draw_buffer, 1, 1, &vk->vertex_buffer, &offsets);	
+		vkCmdDraw(vk->draw_buffer, 4, 1, 0, 0);
 	vkCmdEndRenderPass(vk->draw_buffer);
 
 	vkEndCommandBuffer(vk->draw_buffer);
@@ -264,6 +268,8 @@ void magma_vk_handle_resize(magma_vk_renderer_t *vk, uint32_t width, uint32_t he
 	magma_vk_create_framebuffer(vk);
 }
 
+
+VkResult magma_vk_create_sampler(VkDevice device, VkSampler *sampler);
 magma_vk_renderer_t *magma_vk_renderer_init(magma_backend_t *backend) {
 	VkResult res;
 	magma_vk_renderer_t *vk = calloc(1, sizeof(*vk));
@@ -306,6 +312,8 @@ magma_vk_renderer_t *magma_vk_renderer_init(magma_backend_t *backend) {
 		goto error_vk_create_device;
 	}
 
+	magma_vk_create_sampler(vk->device, &vk->sampler);
+
 	/*Src Memory:*/
 	res = magma_vk_create_2dimage(vk->device, vk->height, vk->width, 
 				VK_FORMAT_B8G8R8A8_SRGB, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
@@ -340,16 +348,24 @@ magma_vk_renderer_t *magma_vk_renderer_init(magma_backend_t *backend) {
 	vkBindImageMemory(vk->device, vk->dst_image, vk->dst_mem, 0);
 
 
+	/*Command Buffer/pool*/
+	magma_vk_create_cmd_pool(vk->device, vk->indicies.graphics, 
+			VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+			NULL, vk->alloc, &vk->command_pool);
+
+
+	magma_vk_alloc_cmd_buffer(vk->device, VK_COMMAND_BUFFER_LEVEL_PRIMARY, 
+			vk->command_pool, NULL, 1, &vk->draw_buffer);
+
 	magmaVkCreateRenderPass(vk);
 	magmaVkCreatePipeline(vk);
-	magmaVkCreateCommandPool(vk);
 	magma_vk_create_framebuffer(vk);
 
 	return vk;
 error_vk_create_device:
 error_vk_get_phsyical_dev:
 #ifdef MAGMA_VK_DEBUG
-	vkDestroyDebugUtilsMessengerEXT(vk->instance, vk->debug_messenger, NULL);
+	vkDestroyDebugUtilsMessengerEXT(vk->instance, vk->debug_messenger, vk->alloc);
 error_vk_get_debug_msg:
 #endif
 	vkDestroyInstance(vk->instance, vk->alloc);
@@ -358,6 +374,8 @@ error_vk_create_instance:
 error_alloc_vk_struct:
 	return NULL;
 }
+
+
 
 void magma_vk_renderer_deinit(magma_vk_renderer_t *vk) {
 

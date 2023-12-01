@@ -114,7 +114,7 @@ VkResult magmaVkCreatePipeline(magma_vk_renderer_t *vk) {
 	fragStage.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
 	fragStage.pName = "main";
 	fragStage.module = fragment;
-
+	
 	vertStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	vertStage.stage = VK_SHADER_STAGE_VERTEX_BIT;
 	vertStage.pName = "main";
@@ -136,9 +136,24 @@ VkResult magmaVkCreatePipeline(magma_vk_renderer_t *vk) {
 
 	inputAsm.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
 	inputAsm.primitiveRestartEnable = VK_FALSE;
-	inputAsm.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	inputAsm.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
+
+	VkVertexInputBindingDescription vertDesc[2] = { 
+		{ 0, sizeof(float) * 4, VK_VERTEX_INPUT_RATE_VERTEX },
+		{ 1, sizeof(float) * 4, VK_VERTEX_INPUT_RATE_VERTEX },
+	};
+	
+	VkVertexInputAttributeDescription vertAttr[2] = {
+		{0, 0, VK_FORMAT_R32G32_SFLOAT, 0},
+		{1, 1, VK_FORMAT_R32G32_SFLOAT, sizeof(float) * 2},
+	};
 
 	vertInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+	vertInfo.pVertexAttributeDescriptions = vertAttr;
+	vertInfo.pVertexBindingDescriptions = vertDesc;
+	vertInfo.vertexAttributeDescriptionCount = 2;
+	vertInfo.vertexBindingDescriptionCount = 2;
+
 
 	colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
 
@@ -155,8 +170,22 @@ VkResult magmaVkCreatePipeline(magma_vk_renderer_t *vk) {
 	multisample.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
 	multisample.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
 
+	VkDescriptorSetLayoutBinding bind = {0};
+	VkDescriptorSetLayoutCreateInfo laycreate = { 0 };
+	bind.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	bind.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	bind.descriptorCount = 1;
+
+	laycreate.pBindings = &bind;
+	laycreate.bindingCount = 1;
+	laycreate.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	vkCreateDescriptorSetLayout(vk->device, &laycreate, NULL, &vk->desc_layout);
+
+	magma_log_fatal("%p\n", vk->desc_layout);
 
 	pipelineLayout.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+	pipelineLayout.setLayoutCount = 1;
+	pipelineLayout.pSetLayouts = &vk->desc_layout;
 
 	vkCreatePipelineLayout(vk->device, &pipelineLayout, vk->alloc, &vk->pipeline_layout);
 
