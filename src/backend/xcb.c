@@ -8,7 +8,7 @@
 
 #include <xcb/xproto.h>
 #include <xcb/xcb_image.h>
-
+#include <xcb/dri3.h>
 
 #include <xkbcommon/xkbcommon-names.h>
 #include <xkbcommon/xkbcommon.h>
@@ -119,13 +119,14 @@ struct xkb_state *magma_xcb_backend_get_xkbstate(magma_backend_t *backend, struc
 void magma_xcb_backend_put_buffer(magma_backend_t *backend, magma_buf_t *buffer) {
 	magma_xcb_backend_t *xcb = (void *)backend;
 
-	xcb_image_t *image = xcb_image_create(buffer->width, buffer->height, XCB_IMAGE_FORMAT_Z_PIXMAP, buffer->bpp, xcb->depth, buffer->bpp, buffer->bpp, 0, XCB_IMAGE_ORDER_LSB_FIRST, buffer->buffer, buffer->width * buffer->height * 4, buffer->buffer);
+	xcb_pixmap_t pix = xcb_generate_id(xcb->connection);
 
+	xcb_dri3_pixmap_from_buffer(xcb->connection, pix, xcb->window, buffer->size, buffer->width,
+			buffer->height, buffer->pitch, 32, 32, buffer->fd);
 
+	xcb_copy_area(xcb->connection, pix, xcb->window, xcb->gc, 0, 0, 0, 0, buffer->width, buffer->height);
 
-	xcb_image_put(xcb->connection, xcb->window, xcb->gc, image, 0, 0, 0);
-
-	xcb_image_destroy(image);
+	xcb_free_pixmap(xcb->connection, pix);
 }
 
 /*TODO: IMPLEMENT CALLBACKS*/

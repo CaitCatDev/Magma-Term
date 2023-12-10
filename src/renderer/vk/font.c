@@ -99,7 +99,7 @@ VkResult magma_vk_make_vertex(magma_vk_renderer_t *vk) {
 	VkBufferCreateInfo buffer = { 0 };
 
 
-	buffer.size = (sizeof(float) * 4) * 500;
+	buffer.size = (sizeof(float) * 4) * 4000;
 	buffer.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	buffer.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 
@@ -119,7 +119,7 @@ VkResult magma_vk_make_vertex(magma_vk_renderer_t *vk) {
 
 int magma_vk_font_bitmap_init(magma_vk_renderer_t *vk, FT_Face face) {
 	VkImageCreateInfo info = { 0 };
-	uint32_t *data;
+	uint8_t *data;
 	VkImage stage;
 	VkDeviceMemory stagemem;
 
@@ -138,7 +138,7 @@ int magma_vk_font_bitmap_init(magma_vk_renderer_t *vk, FT_Face face) {
 
 	/*Dst Image*/
 	magma_vk_create_2dimage(vk->device, tex_height, tex_width, 
-				VK_FORMAT_B8G8R8A8_UNORM, VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+				VK_FORMAT_R8_UNORM, VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
 				0, VK_IMAGE_TILING_LINEAR, 1, 1, NULL, vk->alloc, &stage);
 
 	magma_vk_allocate_image(vk->device, vk->phy_dev, stage, 
@@ -158,8 +158,8 @@ int magma_vk_font_bitmap_init(magma_vk_renderer_t *vk, FT_Face face) {
 	vkMapMemory(vk->device, stagemem, 0, sub_resource_layout.size, 0, (void *)&data);
 	int pen_x = 0, pen_y = 0;
 	
-	float chw = 1.5f * 36.0f / (float)vk->width;
-	float chh = 1.5f * 36.0f / (float)vk->height;
+	float chw = 1.5f * .5f / (float)vk->width;
+	float chh = 1.5f * 0.5f / (float)vk->height;
 
 
 	float xpos = (0.0f / (float)vk->width * 2.0f) - 1.0f;
@@ -167,13 +167,13 @@ int magma_vk_font_bitmap_init(magma_vk_renderer_t *vk, FT_Face face) {
 
 	magma_log_fatal("X&Y: %f %f\n", xpos, ypos);
 	magma_log_fatal("char W&H: %f %f\n", chh, chw);
-
+	uint32_t ascent = face->size->metrics.ascender >> 6;
 	memset(data, 0, sub_resource_layout.size);
 
-	for(int i = 67; i < 68; ++i){
+	for(int i = 32; i < UINT16_MAX; ++i){
 		uint32_t gi = FT_Get_Char_Index(face, i);
 		FT_Load_Glyph(face, gi, FT_LOAD_DEFAULT);
-		FT_Render_Glyph(face->glyph, FT_RENDER_MODE_MONO);;
+		FT_Render_Glyph(face->glyph, FT_RENDER_MODE_NORMAL);
 		FT_Bitmap* bmp = &face->glyph->bitmap;
 
 		if(pen_x + bmp->width >= (unsigned int)tex_width){
@@ -185,28 +185,20 @@ int magma_vk_font_bitmap_init(magma_vk_renderer_t *vk, FT_Face face) {
 			for(uint32_t col = 0; col < bmp->width; ++col){
 				int x = pen_x + col;
 				int y = pen_y + row ;
-				if(vkglyph_check_bit(face->glyph, col, row)) {
-				data[y * (sub_resource_layout.rowPitch / 4) + x] = 0xfff8f8f8;
-				vert[0] = xpos + (chw);
-				vert[1] = -1.0 + (chh);
-				vert[2] = (float)pen_x / tex_width;
-				vert[3] = (float)pen_y / tex_height;
+					data[y * (sub_resource_layout.rowPitch) + x] = bmp->buffer[row * bmp->pitch + col];
+					vk->chardata[i].xpos = face->glyph->bitmap_left;
+					vk->chardata[i].xposmax = face->glyph->bitmap_left + bmp->width;
+					
+					vk->chardata[i].ypos = ascent - face->glyph->bitmap_top;
+					vk->chardata[i].yposmax = ascent - face->glyph->bitmap_top + bmp->rows;
 
-				vert[4] = -0.980 + chw;
-				vert[5] = -1.0f + chh;
-				vert[6] = ((float)pen_x + (float)bmp->width) / tex_width;
-				vert[7] = (float)pen_y / tex_height;
-				
-				vert[8] = -1.0 + chw;
-				vert[9] = -.96 + chh;
-				vert[10] = ((float)pen_x) /tex_width;
-				vert[11] = ((float)pen_y + (float)bmp->rows) / tex_height;
+					vk->chardata[i].xoff = (float)pen_x / tex_width;
+					vk->chardata[i].xoffmax = ((float)pen_x + (float)bmp->width) / tex_width;
 
-				vert[12] = -.98f + chw;
-				vert[13] = -.96f + chh;
-				vert[14] = ((float)pen_x + (float)bmp->width) / tex_width;
-				vert[15] = ((float)pen_y + (float)bmp->rows) / tex_height;
-				}
+					vk->chardata[i].yoff = (float)pen_y / tex_height;
+					vk->chardata[i].yoffmax = ((float)pen_y + (float)bmp->rows) / tex_height;
+					
+					vk->chardata[i].advance = bmp->width;
 			}
 		}
 
@@ -231,7 +223,7 @@ int magma_vk_font_bitmap_init(magma_vk_renderer_t *vk, FT_Face face) {
 
 	/*Src Memory:*/
 	magma_vk_create_2dimage(vk->device, tex_height, tex_width, 
-				VK_FORMAT_B8G8R8A8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT |
+				VK_FORMAT_R8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT |
 				VK_IMAGE_USAGE_TRANSFER_DST_BIT,
 				0, VK_IMAGE_TILING_OPTIMAL, 1, 1, NULL, vk->alloc, &vk->font_text);
 	magma_vk_allocate_image(vk->device, vk->phy_dev, vk->font_text, 
@@ -239,7 +231,7 @@ int magma_vk_font_bitmap_init(magma_vk_renderer_t *vk, FT_Face face) {
 
 	vkBindImageMemory(vk->device, vk->font_text, vk->font_mem, 0);
 
-	magma_vk_create_image_view(vk->device, VK_FORMAT_B8G8R8A8_UNORM, vk->font_text, 
+	magma_vk_create_image_view(vk->device, VK_FORMAT_R8_UNORM, vk->font_text, 
 			VK_IMAGE_VIEW_TYPE_2D, 0, 0, 0, 1, 1, VK_IMAGE_ASPECT_COLOR_BIT, (VkComponentMapping){0},
 			vk->alloc, &vk->font_text_view);
 

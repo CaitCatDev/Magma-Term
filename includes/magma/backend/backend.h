@@ -20,6 +20,7 @@ typedef struct magma_buf {
 	size_t size;
 	uint8_t depth, bpp;
 	void *buffer;
+	int fd;
 }magma_buf_t;
 
 #define MAGMA_KEY_PRESS 1

@@ -152,6 +152,13 @@ VkResult magma_vk_create_device(magma_vk_renderer_t *vk) {
 	VkPhysicalDeviceFeatures dev_feats = {0};
 	VkDeviceCreateInfo device_info = {0};
 	float queue_prio = 1.0f;
+	const char *extensions[] = {
+		"VK_EXT_external_memory_dma_buf",
+		"VK_KHR_external_memory_fd",
+		"VK_KHR_external_memory",
+		"VK_EXT_image_drm_format_modifier",
+		"VK_KHR_image_format_list"
+	};
 
 	queue_info.pQueuePriorities = &queue_prio;
 	queue_info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
@@ -162,6 +169,8 @@ VkResult magma_vk_create_device(magma_vk_renderer_t *vk) {
 	device_info.pEnabledFeatures = &dev_feats;
 	device_info.pQueueCreateInfos = &queue_info;
 	device_info.queueCreateInfoCount = 1;
+	device_info.ppEnabledExtensionNames = extensions;
+	device_info.enabledExtensionCount = 5;
 
 	res = vkCreateDevice(vk->phy_dev, &device_info, vk->alloc, &vk->device);
 	if(res == VK_SUCCESS) {

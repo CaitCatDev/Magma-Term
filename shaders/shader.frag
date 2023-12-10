@@ -8,5 +8,5 @@ layout (location = 0) out vec4 outFragColor;
 
 void main(void)
 {
-	outFragColor = vec4(texture(samplerFont, inUV).r);
+	outFragColor = vec4(texture(samplerFont, inUV).r, 0, 0, 0xff);
 }

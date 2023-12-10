@@ -127,6 +127,8 @@ static VkResult magma_vk_get_required_extensions(magma_backend_t *backend,
 
 	((void)backend);
 
+	extensions[0][backend_ext_sz] = VK_KHR_EXTERNAL_MEMORY_CAPABILITIES_EXTENSION_NAME;
+	backend_ext_sz++;
 #ifdef MAGMA_VK_DEBUG
 	extensions[0][backend_ext_sz] = VK_EXT_DEBUG_UTILS_EXTENSION_NAME;
 	backend_ext_sz++;

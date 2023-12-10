@@ -98,27 +98,31 @@ void echo_char(magma_ctx_t *ctx, glyph_t g, int x, int y, magma_buf_t *buf) {
 	}
 }
 
+void magma_vk_render_char_ext(magma_vk_renderer_t *vk, int ch, float x, float y);
+
 void draw_cb(magma_backend_t *backend, uint32_t height, uint32_t width, void *data) {
 	if(height == 0 || width == 0) return;
 	magma_ctx_t *ctx = data;
-
-	struct magma_buf *vk = magma_vk_draw(ctx->renderer);
-
+	clock_t start = clock();
 	for(int y = 0; y <= ctx->vt->buf_y; y++) {
 		for(int x = 0; x < ctx->vt->cols; ) {
-			if(ctx->vt->lines[y][x].unicode == '\n' || (y == ctx->vt->buf_y && x == ctx->vt->buf_x)) {
+			if(ctx->vt->lines[y][x].unicode == '\n' || (y == ctx->vt->buf_y && x >= ctx->vt->buf_x)) {
 				break;
 			}
 			if(ctx->vt->lines[y][x].unicode == 0x09) {
 				x = ((x) | (8 - 1)) + 1;
 				continue;
 			}
+			magma_vk_render_char_ext(ctx->renderer, ctx->vt->lines[y][x].unicode, x, y);	
 			x++;
 		}
 	}
-
-
+	struct magma_buf *vk = magma_vk_draw(ctx->renderer);
+	magma_log_debug("Time Taken to draw VK: %f\n", ((double)clock() - start) / CLOCKS_PER_SEC);
+	
 	magma_backend_put_buffer(backend, vk);
+
+	magma_log_debug("Time Taken to draw: %f\n", ((double)clock() - start) / CLOCKS_PER_SEC);
 }
 
 void keymap_cb(magma_backend_t *backend, void *data) {
@@ -297,7 +301,7 @@ int main(int argc, char **argv) {
 
 	FcInit();
 	ctx.font = magma_font_init("monospace");
-	FT_Set_Pixel_Sizes(ctx.font->face, 48, 48);
+	FT_Set_Pixel_Sizes(ctx.font->face, 50, 50);
 	ctx.font->height = ctx.font->face->size->metrics.height >> 6;
 	
 	/* Get the size of the M character to use as the advance width 

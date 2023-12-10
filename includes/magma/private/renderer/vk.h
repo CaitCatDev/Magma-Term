@@ -13,6 +13,13 @@ struct queue_indicies {
 	uint32_t compute, graphics, transfer;
 };
 
+struct font_data {
+	float xoff, xoffmax;
+	float yoff, yoffmax;
+	float xpos, xposmax;
+	float ypos, yposmax;
+	uint32_t advance;
+};
 
 struct magma_vk_renderer {
 	VkInstance instance;
@@ -58,12 +65,15 @@ struct magma_vk_renderer {
 	FT_Face face;
 	uint32_t textw, texth;
 
+	struct font_data chardata[UINT16_MAX];
+
 	VkDescriptorSet desc_set;
 	VkDescriptorPool pool;
 	VkDescriptorSetLayout desc_layout;
 	VkSampler sampler;
 
 	float *vertex;
+	uint32_t vcount;
 	VkBuffer vertex_buffer;
 	VkDeviceMemory vertbuf_mem;
 };
