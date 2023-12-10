@@ -156,11 +156,21 @@ int magma_vk_font_bitmap_init(magma_vk_renderer_t *vk, FT_Face face) {
 
 	magma_log_fatal("PITCH: %d\n", sub_resource_layout.rowPitch);
 	vkMapMemory(vk->device, stagemem, 0, sub_resource_layout.size, 0, (void *)&data);
-	int pen_x, pen_y = 0;
+	int pen_x = 0, pen_y = 0;
+	
+	float chw = 1.5f * 36.0f / (float)vk->width;
+	float chh = 1.5f * 36.0f / (float)vk->height;
+
+
+	float xpos = (0.0f / (float)vk->width * 2.0f) - 1.0f;
+	float ypos = (0.0f / (float)vk->height * 2.0f) - 1.0f;
+
+	magma_log_fatal("X&Y: %f %f\n", xpos, ypos);
+	magma_log_fatal("char W&H: %f %f\n", chh, chw);
 
 	memset(data, 0, sub_resource_layout.size);
 
-	for(int i = 65; i < 66; ++i){
+	for(int i = 67; i < 68; ++i){
 		uint32_t gi = FT_Get_Char_Index(face, i);
 		FT_Load_Glyph(face, gi, FT_LOAD_DEFAULT);
 		FT_Render_Glyph(face->glyph, FT_RENDER_MODE_MONO);;
@@ -174,39 +184,37 @@ int magma_vk_font_bitmap_init(magma_vk_renderer_t *vk, FT_Face face) {
 		for(uint32_t row = 0; row < bmp->rows; ++row){
 			for(uint32_t col = 0; col < bmp->width; ++col){
 				int x = pen_x + col;
-				int y = pen_y + row + (face->size->face->height >> 6);
+				int y = pen_y + row ;
 				if(vkglyph_check_bit(face->glyph, col, row)) {
 				data[y * (sub_resource_layout.rowPitch / 4) + x] = 0xfff8f8f8;
-				vert[0] = -1.0 ;
-				vert[1] = -1.0 ;
-				vert[2] = ((float)pen_x / tex_width);
-				vert[3] = ((float)pen_y / tex_height);
+				vert[0] = xpos + (chw);
+				vert[1] = -1.0 + (chh);
+				vert[2] = (float)pen_x / tex_width;
+				vert[3] = (float)pen_y / tex_height;
 
-				vert[4] = -.7;
-				vert[5] = -1.0f ;
-				vert[6] = ((float)x / tex_width);
-				vert[7] = ((float)pen_y + (face->size->metrics.height >> 6)) / tex_height;
+				vert[4] = -0.980 + chw;
+				vert[5] = -1.0f + chh;
+				vert[6] = ((float)pen_x + (float)bmp->width) / tex_width;
+				vert[7] = (float)pen_y / tex_height;
 				
-				vert[8] = -.90;
-				vert[9] = -.0;
-				vert[10] = ((float)pen_x * (face->size->metrics.max_advance >> 6)) / tex_width;
-				vert[11] = ((float)pen_y * (face->size->metrics.height >> 6)) / tex_height;
+				vert[8] = -1.0 + chw;
+				vert[9] = -.96 + chh;
+				vert[10] = ((float)pen_x) /tex_width;
+				vert[11] = ((float)pen_y + (float)bmp->rows) / tex_height;
 
-				vert[12] = -.71;
-				vert[13] = -0.90f;
-				vert[14] = ((float)x + (face->size->metrics.max_advance >> 6)) / tex_width;
-				vert[15] = ((float)y) / tex_height;
-				for(int i = 0; i < 16; i++) {
-					printf("Vertex (%d): %f\n", i, vert[i]);
-				}
+				vert[12] = -.98f + chw;
+				vert[13] = -.96f + chh;
+				vert[14] = ((float)pen_x + (float)bmp->width) / tex_width;
+				vert[15] = ((float)pen_y + (float)bmp->rows) / tex_height;
 				}
 			}
 		}
 
-		pen_x += bmp->width + 4;
+		pen_x += bmp->width + 1;
 	}
-
-
+	for(int i = 0; i < 16; i++) {
+		printf("Vert %d: %f\n", i, vert[i]);	
+	}
 	vkUnmapMemory(vk->device, stagemem);
 	info.extent.height = tex_height;
 	info.extent.width = tex_width;
@@ -319,8 +327,9 @@ int magma_vk_font_bitmap_init(magma_vk_renderer_t *vk, FT_Face face) {
 	magma_vk_allocate_desc_set(vk);
 	
 
-
-
+	vk->texth = tex_height;
+	vk->textw = tex_width;
+	vk->face = face;
 
 	return 0;
 }

@@ -4,6 +4,10 @@
 #include <stdint.h>
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_core.h>
+#include <ft2build.h>
+#include FT_FREETYPE_H
+
+
 
 struct queue_indicies {
 	uint32_t compute, graphics, transfer;
@@ -51,6 +55,8 @@ struct magma_vk_renderer {
 	VkImage font_text;
 	VkImageView font_text_view;
 	VkDeviceMemory font_mem;
+	FT_Face face;
+	uint32_t textw, texth;
 
 	VkDescriptorSet desc_set;
 	VkDescriptorPool pool;

@@ -1,3 +1,4 @@
+#include "freetype/freetype.h"
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_core.h>
 #include <magma/renderer/vk.h>
@@ -54,6 +55,62 @@ magma_buf_t *magma_vk_draw(magma_vk_renderer_t *vk) {
 	static magma_buf_t buf;
 
 
+	float *vert =vk->vertex;
+	FT_Face face = vk->face;
+
+
+	int pen_x = 0, pen_y = 0;
+	
+	float chw = 1.5f * 1.0f / (float)vk->width;
+	float chh = 1.5f * 1.0f / (float)vk->height;
+
+
+	float xpos = (0.0f / (float)vk->width * 2.0f) - 1.0f;
+	float ypos = (0.0f / (float)vk->height * 2.0f) - 1.0f;
+
+	magma_log_fatal("X&Y: %f %f\n", xpos, ypos);
+	magma_log_fatal("char W&H: %f %f\n", chw, chh);
+
+	uint32_t tex_width = vk->textw;
+	uint32_t tex_height = vk->texth;
+
+	for(int i = 67; i < 68; ++i){
+		uint32_t gi = FT_Get_Char_Index(face, i);
+		FT_Load_Glyph(face, gi, FT_LOAD_DEFAULT);
+		FT_Render_Glyph(face->glyph, FT_RENDER_MODE_MONO);;
+		FT_Bitmap* bmp = &face->glyph->bitmap;
+
+		if(pen_x + bmp->width >= (unsigned int)tex_width){
+			pen_x = 0;
+			pen_y += ((face->size->metrics.height >> 6) + 1);
+		}
+
+		for(uint32_t row = 0; row < bmp->rows; ++row){
+			for(uint32_t col = 0; col < bmp->width; ++col){
+				vert[0] = xpos + (face->glyph->bitmap_left * chw);
+				vert[1] = ypos + (face->glyph->bitmap_top * chh);
+				vert[2] = (float)pen_x / tex_width;
+				vert[3] = (float)pen_y / tex_height;
+
+				vert[4] = xpos + ((face->glyph->bitmap_left + bmp->width) * chw);
+				vert[5] = ypos + (face->glyph->bitmap_top * chh);
+				vert[6] = ((float)pen_x + (float)bmp->width) / tex_width;
+				vert[7] = (float)pen_y / tex_height;
+				
+				vert[8] = xpos + (face->glyph->bitmap_left * chw);
+				vert[9] = ypos + ((face->glyph->bitmap_top + bmp->rows) * chh);
+				vert[10] = ((float)pen_x) /tex_width;
+				vert[11] = ((float)pen_y + (float)bmp->rows) / tex_height;
+
+				vert[12] = xpos + ((face->glyph->bitmap_left + bmp->width) * chw);
+				vert[13] = ypos + ((face->glyph->bitmap_top + bmp->rows) * chh);
+				vert[14] = ((float)pen_x + (float)bmp->width) / tex_width;
+				vert[15] = ((float)pen_y + (float)bmp->rows) / tex_height;
+				}
+			}
+		}
+
+
 	VkCommandBufferBeginInfo beginInfo = { 0 };
 	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	vkBeginCommandBuffer(vk->draw_buffer, &beginInfo);
@@ -67,7 +124,7 @@ magma_buf_t *magma_vk_draw(magma_vk_renderer_t *vk) {
 	renderPassInfo.renderArea.extent.height = vk->height;
 	renderPassInfo.renderArea.extent.width = vk->width;
 	
-	VkClearValue clearColor = {{{1.0f, 0.f, 0.f, .8f}}};
+	VkClearValue clearColor = {{{0.0f, 0.f, 0.f, 1.0f}}};
 	renderPassInfo.clearValueCount = 1;
 	renderPassInfo.pClearValues = &clearColor;
 
@@ -258,7 +315,7 @@ void magma_vk_handle_resize(magma_vk_renderer_t *vk, uint32_t width, uint32_t he
 		
 	}
 
-	res = magma_vk_allocate_image(vk->device, vk->phy_dev, vk->vk_image, 
+	res = magma_vk_allocate_image(vk->device, vk->phy_dev, vk->dst_image,
 			VK_MEMORY_PROPERTY_HOST_CACHED_BIT | 
 			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, 
 			NULL, vk->alloc, &vk->dst_mem);

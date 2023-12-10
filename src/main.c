@@ -297,7 +297,7 @@ int main(int argc, char **argv) {
 
 	FcInit();
 	ctx.font = magma_font_init("monospace");
-	FT_Set_Pixel_Sizes(ctx.font->face,24, 24);
+	FT_Set_Pixel_Sizes(ctx.font->face, 48, 48);
 	ctx.font->height = ctx.font->face->size->metrics.height >> 6;
 	
 	/* Get the size of the M character to use as the advance width 
