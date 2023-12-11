@@ -59,9 +59,24 @@ else
 
   protodirs = wayland_protocols.get_variable('pkgdatadir')
 
+  dmabuf_proto = protodirs + '/unstable/linux-dmabuf/linux-dmabuf-unstable-v1.xml'
   xdg_shell_proto = protodirs + '/stable/xdg-shell/xdg-shell.xml'
 
   message(xdg_shell_proto)
+
+
+  dmabuf_headers = custom_target(
+	'dmabuf_header',
+	output: '@BASENAME@.h',
+	input: dmabuf_proto,
+	command: [wayland_scanner_bin, 'client-header', '@INPUT@', '@OUTPUT@'])
+
+  dmabuf_src = custom_target(
+	'dmabuf_src',
+	output: '@BASENAME@.c',
+	input: dmabuf_proto,
+	command: [wayland_scanner_bin, 'private-code', '@INPUT@', '@OUTPUT@']
+  )
 
   xdg_shell_headers = custom_target(
 	'xdg_shell_header',
@@ -74,8 +89,10 @@ else
 	output: '@BASENAME@.c',
 	input: xdg_shell_proto,
 	command: [wayland_scanner_bin, 'private-code', '@INPUT@', '@OUTPUT@']
-)
+  )
 
+  src_files += dmabuf_src
+  src_files += dmabuf_headers
   src_files += xdg_shell_src
   src_files += xdg_shell_headers
 endif

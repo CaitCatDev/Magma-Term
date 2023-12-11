@@ -5,6 +5,8 @@
 #include <wayland-client-core.h>
 #include <wayland-client-protocol.h>
 
+#include <linux-dmabuf-unstable-v1.h>
+
 #include <xdg-shell.h>
 
 /*xkbcommon*/
@@ -77,6 +79,11 @@ static const struct xdg_wm_base_listener xdg_wm_base_listener = {
 	.ping = xdg_wm_base_ping,
 };
 
+
+static const struct zwp_linux_dmabuf_v1_listener zwp_linux_dmabuf_listener = {
+	
+};
+
 void wl_registry_global(void *data, struct wl_registry *registry, uint32_t name, const char *interface, uint32_t version) {
 	magma_wl_backend_t *wl;
 	magma_log_info("WL_GLOBAL: %s(%d)\n", interface, version);
@@ -93,6 +100,8 @@ void wl_registry_global(void *data, struct wl_registry *registry, uint32_t name,
 	} else if(strcmp(interface, xdg_wm_base_interface.name) == 0) {
 		wl->xdg_wm_base = wl_registry_bind(registry, name, &xdg_wm_base_interface, version);
 		xdg_wm_base_add_listener(wl->xdg_wm_base, &xdg_wm_base_listener, NULL);
+	} else if(strcmp(interface, zwp_linux_dmabuf_v1_interface.name) == 0) {
+		wl->dmabuf = wl_registry_bind(registry, name, &zwp_linux_dmabuf_v1_interface, version);
 	}
 }
 
@@ -201,8 +210,11 @@ static const struct wl_buffer_listener wl_buffer_listener = {
 	.release = wl_buffer_release,
 };
 
+#include <drm_fourcc.h>
+
 void magma_wl_backend_put_buffer(magma_backend_t *backend, magma_buf_t *buffer) {
 	magma_wl_backend_t *wl = (void*)backend;
+	/*
 	int fd = allocate_shm_fd(buffer->pitch * buffer->height);
 
 
@@ -220,10 +232,20 @@ void magma_wl_backend_put_buffer(magma_backend_t *backend, magma_buf_t *buffer) 
 	munmap(data, buffer->pitch * buffer->height);
 
 	free(buffer->buffer);
+	*/
+	struct zwp_linux_buffer_params_v1 *parms = zwp_linux_dmabuf_v1_create_params(wl->dmabuf);
+	
+	zwp_linux_buffer_params_v1_add(parms, buffer->fd, 0, 0, buffer->pitch, 0, 0);
+	struct wl_buffer *buf = zwp_linux_buffer_params_v1_create_immed(parms, buffer->width, buffer->height, DRM_FORMAT_ARGB8888, 0);
+	wl_buffer_add_listener(buf, &wl_buffer_listener, NULL);
+
 	wl_surface_damage_buffer(wl->surface, 0, 0, buffer->width, buffer->height);
 
 	wl_surface_attach(wl->surface, buf, 0, 0);
 	wl_surface_commit(wl->surface);
+
+	zwp_linux_buffer_params_v1_destroy(parms);
+	close(buffer->fd);
 }
 
 void magma_wl_backend_start(magma_backend_t *backend) {

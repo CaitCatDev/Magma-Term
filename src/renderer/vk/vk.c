@@ -146,7 +146,7 @@ magma_buf_t *magma_vk_draw(magma_vk_renderer_t *vk) {
 	renderPassInfo.renderArea.extent.height = vk->height;
 	renderPassInfo.renderArea.extent.width = vk->width;
 	
-	VkClearValue clearColor = {{{0.0f, 0.f, 0.f, 1.0f}}};
+	VkClearValue clearColor = {{{0.3f, 0.5f, 0.2f, .80f}}};
 	renderPassInfo.clearValueCount = 1;
 	renderPassInfo.pClearValues = &clearColor;
 
@@ -231,7 +231,7 @@ magma_buf_t *magma_vk_draw(magma_vk_renderer_t *vk) {
 	PFN_vkGetMemoryFdKHR function = (PFN_vkGetMemoryFdKHR)vkGetDeviceProcAddr(vk->device, "vkGetMemoryFdKHR");
 	function(vk->device, &info, &buf.fd);
 
-	
+	magma_log_debug("FD: %d\n", buf.fd);	
 	vk->vcount = 0;
 	return &buf;
 }

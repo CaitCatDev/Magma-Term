@@ -25,6 +25,8 @@ typedef struct magma_wl_backend {
 	struct xdg_surface *xdg_surface;
 	struct xdg_toplevel *xdg_toplevel;
 
+	struct zwp_linux_dmabuf_v1 *dmabuf;
+
 	uint32_t kmsize;
 	int32_t keymap_fd;
 
